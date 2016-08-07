@@ -15,7 +15,7 @@ from radosgw_agent.constants import DEFAULT_TIME, RESULT_SUCCESS, RESULT_ERROR
 log = logging.getLogger(__name__)
 dev_log = get_dev_logger(__name__)
 
-MAX_ENTRIES_LIMIT_EVERY_SPRINT = 10000
+MAX_ENTRIES_LIMIT_EVERYTIME = 10000
 
 
 class Worker(multiprocessing.Process):
@@ -357,7 +357,7 @@ class DataWorkerIncremental(IncrementalMixin, DataWorker):
             else:
                 marker = ' '
 
-            if len(log_entries) < self.max_entries and len(entries) >= MAX_ENTRIES_LIMIT_EVERY_SPRINT:
+            if len(log_entries) < self.max_entries and len(entries) >= MAX_ENTRIES_LIMIT_EVERYTIME:
                 break
         return marker, entries
 
@@ -371,10 +371,8 @@ class DataWorkerIncremental(IncrementalMixin, DataWorker):
         bucket = self.get_bucket(instance)
         new_retries = self.sync_bucket(bucket, objects.union(retries))
 
-        if objects:
-            result = self.set_bound(instance, max_marker, new_retries, 'bucket-index')
-        else:
-            result = self.set_bound(instance, marker, new_retries, 'bucket-index')
+        new_marker = max_marker if objects else marker
+        result = self.set_bound(instance, new_marker, new_retries, 'bucket-index')
 
         if new_retries:
             result = RESULT_ERROR
