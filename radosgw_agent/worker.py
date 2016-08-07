@@ -10,12 +10,10 @@ from radosgw_agent import client
 from radosgw_agent import lock
 from radosgw_agent.util import obj as obj_, get_dev_logger
 from radosgw_agent.exceptions import SkipShard, SyncError, SyncTimedOut, SyncFailed, NotModified, NotFound, BucketEmpty
-from radosgw_agent.constants import DEFAULT_TIME, RESULT_SUCCESS, RESULT_ERROR
+from radosgw_agent.constants import DEFAULT_TIME, RESULT_SUCCESS, RESULT_ERROR, MAX_ENTRIES_LIMIT_EVERYTIME
 
 log = logging.getLogger(__name__)
 dev_log = get_dev_logger(__name__)
-
-MAX_ENTRIES_LIMIT_EVERYTIME = 10000
 
 
 class Worker(multiprocessing.Process):
@@ -79,7 +77,7 @@ class Worker(multiprocessing.Process):
             try:
                 data = [
                     obj_.to_dict(item, time=DEFAULT_TIME) for item in retries
-                ]
+                    ]
                 client.set_worker_bound(self.dest_conn,
                                         type_,
                                         marker,
@@ -94,6 +92,7 @@ class Worker(multiprocessing.Process):
                          exc_info=True)
                 return RESULT_ERROR
 
+
 MetadataEntry = namedtuple('MetadataEntry',
                            ['section', 'name', 'marker', 'timestamp'])
 
@@ -104,7 +103,8 @@ def _meta_entry_from_json(entry):
         entry['name'],
         entry['id'],
         entry['timestamp'],
-        )
+    )
+
 
 BucketIndexEntry = namedtuple('BucketIndexEntry',
                               [
@@ -121,10 +121,10 @@ BucketIndexEntry = namedtuple('BucketIndexEntry',
                               ])
 
 BucketVer = namedtuple('BucketVer',
-        [
-            'epoch',
-            'pool',
-        ])
+                       [
+                           'epoch',
+                           'pool',
+                       ])
 
 
 def _bi_entry_from_json(entry):
@@ -148,7 +148,7 @@ def _bi_entry_from_json(entry):
         entry['object'],
         VersionedEpoch,
         version_id,
-        )
+    )
 
 
 def filter_versioned_objects(entry):
@@ -212,7 +212,6 @@ class IncrementalMixin(object):
 
 
 class DataWorker(Worker):
-
     def __init__(self, *args, **kwargs):
         super(DataWorker, self).__init__(*args, **kwargs)
         self.type = 'data'
@@ -223,7 +222,7 @@ class DataWorker(Worker):
     def sync_object(self, bucket, obj):
         log.debug('syncing object %s/%s', bucket, obj.name)
         self.op_id += 1
-        local_op_id = self.local_lock_id + ':' +  str(self.op_id)
+        local_op_id = self.local_lock_id + ':' + str(self.op_id)
         found = False
 
         try:
@@ -306,7 +305,7 @@ class DataWorker(Worker):
         return bucket_instance.split(':', 1)[0]
 
     def sync_bucket(self, bucket, objects):
-        log.info('*'*80)
+        log.info('*' * 80)
         log.info('syncing bucket "%s"', bucket)
         retry_objs = []
         count = 0
@@ -323,13 +322,12 @@ class DataWorker(Worker):
                 retry_objs.append(obj)
         log.info('synced %s objects' % count)
         log.info('completed syncing bucket "%s"', bucket)
-        log.info('*'*80)
+        log.info('*' * 80)
 
         return retry_objs
 
 
 class DataWorkerIncremental(IncrementalMixin, DataWorker):
-
     def __init__(self, *args, **kwargs):
         super(DataWorkerIncremental, self).__init__(*args, **kwargs)
         self.max_entries = kwargs['max_entries']
@@ -417,7 +415,6 @@ class DataWorkerIncremental(IncrementalMixin, DataWorker):
 
 
 class DataWorkerFull(DataWorker):
-
     def full_sync_bucket(self, bucket):
         try:
             instance = self.get_bucket_instance(bucket)
@@ -474,7 +471,6 @@ class DataWorkerFull(DataWorker):
 
 
 class MetadataWorker(Worker):
-
     def __init__(self, *args, **kwargs):
         super(MetadataWorker, self).__init__(*args, **kwargs)
         self.type = 'metadata'
@@ -501,11 +497,11 @@ class MetadataWorker(Worker):
                 return RESULT_SUCCESS
             except Exception as e:
                 log.warn('error updating metadata for %s "%s": %s',
-                          section, name, e, exc_info=True)
+                         section, name, e, exc_info=True)
                 return RESULT_ERROR
 
-class MetadataWorkerIncremental(IncrementalMixin, MetadataWorker):
 
+class MetadataWorkerIncremental(IncrementalMixin, MetadataWorker):
     def __init__(self, *args, **kwargs):
         super(MetadataWorkerIncremental, self).__init__(*args, **kwargs)
 
@@ -526,8 +522,8 @@ class MetadataWorkerIncremental(IncrementalMixin, MetadataWorker):
 
         return new_retries
 
-class MetadataWorkerFull(MetadataWorker):
 
+class MetadataWorkerFull(MetadataWorker):
     def empty_result(self, shard):
         return shard, []
 
